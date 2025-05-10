@@ -1,0 +1,5 @@
+/backend/bin/
+/backend/obj/
+/appse
+/backend/appsettings.Development.json
+/backend/appsettings.json
