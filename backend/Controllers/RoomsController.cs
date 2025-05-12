@@ -57,4 +57,20 @@ public class RoomsController : ControllerBase
         var rooms = _manager.GetAllRooms();
         return Ok(rooms);
     }
+
+
+    [HttpPost("{roomId}/spin")]
+    public async Task<IActionResult> SpinWheel(string roomId, [FromBody] List<string> future)
+    {
+        try
+        {
+            string result = await _manager.SpinWheelAndBroadcastAsync(roomId, future);
+            return Ok(new { roomId, result });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+    }
+
 }

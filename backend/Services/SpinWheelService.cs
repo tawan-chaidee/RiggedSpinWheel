@@ -33,9 +33,9 @@ public class SpinWheel : ISpinWheelState
     public List<Segment> Segments { get; } = new List<Segment>();
     public string RoomId { get; }
 
-    public SpinWheel(string sessionId)
+    public SpinWheel(string roomId)
     {
-        RoomId = sessionId;
+        RoomId = roomId;
     }
 
     public string Spin(List<string> future)
@@ -43,7 +43,6 @@ public class SpinWheel : ISpinWheelState
         // If future is provided, enqueue the items as forced results
         if (future != null && future.Any())
         {
-            // Check if each item in the future list exists in the segments
             foreach (var item in future)
             {
                 if (!Segments.Any(s => s.Name == item))
@@ -63,14 +62,15 @@ public class SpinWheel : ISpinWheelState
         }
         else
         {
-            // Otherwise, perform the regular random spin
             result = GetRandomSegment();
         }
+
+        // Remove the picked segment from Segments
+        Segments.RemoveAll(s => s.Name == result);
 
         History.Add(result);
         return result;
     }
-
 
     public void AddSegment(string name, int weight)
     {
