@@ -1,41 +1,62 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
-    public class Room : Hub
+public class Room : Hub
+{
+    // connectionId -> (userName, roomId)
+    private static readonly ConcurrentDictionary<string, (string userName, string roomId)> _users
+        = new ConcurrentDictionary<string, (string, string)>();
+
+    private readonly ISpinWheelRoomManager _roomManager;
+
+    // Inject the room manager
+    public Room(ISpinWheelRoomManager roomManager)
     {
-        // connectionId -> (userName, roomId)
-        private static readonly ConcurrentDictionary<string, (string userName, string roomId)> _users
-            = new ConcurrentDictionary<string, (string, string)>();
+        _roomManager = roomManager;
+    }
 
-        // Register the user and add them to the specified room
-        public async Task Register(string userName, string roomId)
+    public async Task Register(string userName, string roomId)
+    {
+        if (_roomManager.GetRoom(roomId) == null)
         {
-            _users[Context.ConnectionId] = (userName, roomId);
+            await Clients.Caller.SendAsync("RegistrationFailed", $"Room '{roomId}' does not exist.");
+            Console.WriteLine($"Registration failed for user {userName}. Room {roomId} not found.");
+            return; 
+        }
+
+        if (_users.TryAdd(Context.ConnectionId, (userName, roomId)))
+        {
             await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
             Console.WriteLine($"User {userName} joined room {roomId} (Connection: {Context.ConnectionId})");
+            await Clients.Caller.SendAsync("RegistrationSuccess", $"Successfully joined room {roomId}.");
         }
-
-        // Broadcast a JSON message to the specified room
-        public Task Broadcast(string roomId, string jsonMessage)
+        else
         {
-            return Clients.Group(roomId).SendAsync("ReceiveMessage", jsonMessage);
-        }
-
-        public override async Task OnDisconnectedAsync(Exception? exception)
-        {
-            if (_users.TryRemove(Context.ConnectionId, out var info))
-            {
-                await Groups.RemoveFromGroupAsync(Context.ConnectionId, info.roomId);
-                Console.WriteLine($"User {info.userName} left room {info.roomId} (Connection: {Context.ConnectionId})");
-            }
-            await base.OnDisconnectedAsync(exception);
+             await Clients.Caller.SendAsync("RegistrationFailed", "Could not register. You might already be in a room.");
+             Console.WriteLine($"User {userName} registration failed for room {roomId} (Connection: {Context.ConnectionId}). Connection ID already exists.");
         }
     }
 
+    // Broadcast a JSON message to the specified room
+    public Task Broadcast(string roomId, string jsonMessage)
+    {
+         if (_roomManager.GetRoom(roomId) == null)
+         {
+             Console.WriteLine($"Attempted to broadcast to non-existent room {roomId}.");
+             return Task.CompletedTask;
+         }
+         return Clients.Group(roomId).SendAsync("ReceiveMessage", jsonMessage);
+    }
 
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        if (_users.TryRemove(Context.ConnectionId, out var info))
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, info.roomId);
+            Console.WriteLine($"User {info.userName} left room {info.roomId} (Connection: {Context.ConnectionId})");
+        }
+        await base.OnDisconnectedAsync(exception);
+    }
+}
