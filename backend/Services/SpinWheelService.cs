@@ -7,6 +7,8 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
 
 public class Segment
 {
@@ -14,12 +16,20 @@ public class Segment
     public int Weight { get; set; }
 }
 
+public class SpinResult
+{
+    public string Current { get; set; }
+    public string Previous { get; set; }
+    public List<Segment> NewState { get; set; }
+    public List<string> History { get; set; }
+}
+
 public interface ISpinWheelState
 {
     List<string> History { get; }
     List<Segment> Segments { get; }
     string RoomId { get; }
-    string Spin(List<string> future);
+    SpinResult Spin(List<string> future);
     void AddSegment(string name, int weight);
     void RemoveSegment(string name);
 }
@@ -38,38 +48,43 @@ public class SpinWheel : ISpinWheelState
         RoomId = roomId;
     }
 
-    public string Spin(List<string> future)
+    public SpinResult Spin(List<string> future)
     {
-        // If future is provided, enqueue the items as forced results
+        // Enqueue forced future results
         if (future != null && future.Any())
         {
-            foreach (var item in future)
+            foreach (var name in future)
             {
-                if (!Segments.Any(s => s.Name == item))
-                {
-                    throw new ArgumentException($"Segment '{item}' not found in the wheel.");
-                }
-                forcedResults.Enqueue(item);
+                if (!Segments.Any(s => s.Name == name))
+                    throw new ArgumentException($"Segment '{name}' not found on wheel.");
+                forcedResults.Enqueue(name);
             }
         }
 
-        string result;
+        if (Segments.Count == 0)
+            throw new InvalidOperationException("No segments to spin.");
 
-        // If there are forced results, dequeue and use them
-        if (forcedResults.Count > 0)
+        // Capture previous
+        var previous = History.LastOrDefault();
+
+        // Determine current spin
+        string current = forcedResults.Count > 0
+            ? forcedResults.Dequeue()
+            : GetRandomSegment();
+
+        // Remove current from wheel
+        Segments.RemoveAll(s => s.Name == current);
+        // Append to history
+        History.Add(current);
+
+        // Prepare result payload
+        return new SpinResult
         {
-            result = forcedResults.Dequeue();
-        }
-        else
-        {
-            result = GetRandomSegment();
-        }
-
-        // Remove the picked segment from Segments
-        Segments.RemoveAll(s => s.Name == result);
-
-        History.Add(result);
-        return result;
+            Current = current,
+            Previous = previous,
+            NewState = Segments.ToList(), // copy for immutability
+            History = History.ToList()
+        };
     }
 
     public void AddSegment(string name, int weight)
@@ -79,36 +94,20 @@ public class SpinWheel : ISpinWheelState
 
     public void RemoveSegment(string name)
     {
-        foreach (var segment in Segments)
-        {
-            if (segment.Name == name)
-            {
-                Segments.Remove(segment);
-                return; 
-            }
-        }
+        Segments.RemoveAll(s => s.Name == name);
     }
-
 
     private string GetRandomSegment()
     {
-        if (Segments.Count == 0)
-            throw new InvalidOperationException("No segments available.");
-
-        int totalWeight = Segments.Sum(s => s.Weight);
-        int randomNumber = random.Next(totalWeight);
-        int cumulative = 0;
-
-        foreach (var segment in Segments)
+        int total = Segments.Sum(s => s.Weight);
+        int pick = random.Next(total);
+        int acc = 0;
+        foreach (var seg in Segments)
         {
-            cumulative += segment.Weight;
-            if (randomNumber < cumulative)
-            {
-                return segment.Name;
-            }
+            acc += seg.Weight;
+            if (pick < acc)
+                return seg.Name;
         }
-
         return Segments.Last().Name;
     }
 }
-

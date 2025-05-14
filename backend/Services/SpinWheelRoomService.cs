@@ -10,58 +10,43 @@ public interface ISpinWheelRoomManager
     bool RemoveRoom(string roomId);
     ISpinWheelState GetRoom(string roomId);
     IEnumerable<ISpinWheelState> GetAllRooms();
-    Task<string> SpinWheelAndBroadcastAsync(string roomId, List<string> future);
+    Task<SpinResult> SpinWheelAndBroadcastAsync(string roomId, List<string> future);
 }
 
 public class SpinWheelRoomManager : ISpinWheelRoomManager
 {
     private ConcurrentDictionary<string, ISpinWheelState> rooms = new ConcurrentDictionary<string, ISpinWheelState>();
-    private readonly IHubContext<Room> _hubContext; // Inject Hub Context
+    private readonly IHubContext<Room> _hubContext;
 
     public SpinWheelRoomManager(IHubContext<Room> hubContext)
     {
-        _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
+        _hubContext = hubContext;
     }
 
     public string CreateRoom()
     {
-        string roomId = Guid.NewGuid().ToString();
-        var spinWheel = new SpinWheel(roomId);
-        rooms.TryAdd(roomId, spinWheel);
-        return roomId;
+        var id = Guid.NewGuid().ToString();
+        var wheel = new SpinWheel(id);
+        rooms.TryAdd(id, wheel);
+        return id;
     }
 
     public bool RemoveRoom(string roomId)
-    {
-        return rooms.TryRemove(roomId, out _);
-    }
+        => rooms.TryRemove(roomId, out _);
 
     public ISpinWheelState GetRoom(string roomId)
-    {
-        rooms.TryGetValue(roomId, out var room);
-        return room;
-    }
+        => rooms.TryGetValue(roomId, out var room) ? room : null;
 
     public IEnumerable<ISpinWheelState> GetAllRooms()
+        => rooms.Values;
+
+    public async Task<SpinResult> SpinWheelAndBroadcastAsync(string roomId, List<string> future)
     {
-        return rooms.Values;
-    }
-
-    public async Task<string> SpinWheelAndBroadcastAsync(string roomId, List<string> future)
-    {
-        ISpinWheelState room = GetRoom(roomId);
-        if (room == null)
-        {
-            throw new KeyNotFoundException($"Room with ID '{roomId}' not found.");
-        }
-
-        string result = room.Spin(future);
-        var payload = new { RoomId = roomId, Result = result };
-        string jsonPayload = JsonSerializer.Serialize(payload); 
-
-        // Broadcast the result to the specific SignalR group (room)
-        await _hubContext.Clients.Group(roomId).SendAsync("SpinResult", jsonPayload);
-        Console.WriteLine($"Spin result '{result}' broadcasted to room {roomId}");
-        return result;
+        var room = GetRoom(roomId) ?? throw new KeyNotFoundException($"Room '{roomId}' not found.");
+        var spinResult = room.Spin(future);
+        var json = JsonSerializer.Serialize(spinResult);
+        await _hubContext.Clients.Group(roomId).SendAsync("SpinResult", json);
+        Console.WriteLine($"Broadcasted spin in room {roomId}: {spinResult.Current}");
+        return spinResult;
     }
 }

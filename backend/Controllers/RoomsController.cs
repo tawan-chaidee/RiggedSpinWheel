@@ -64,7 +64,7 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            string result = await _manager.SpinWheelAndBroadcastAsync(roomId, future);
+            SpinResult result = await _manager.SpinWheelAndBroadcastAsync(roomId, future);
             return Ok(new { roomId, result });
         }
         catch (KeyNotFoundException ex)
