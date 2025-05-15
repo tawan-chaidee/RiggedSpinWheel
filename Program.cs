@@ -22,11 +22,12 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+app.UseStaticFiles();
+
 app.MapOpenApi();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// Apply CORS policy globally
 app.UseCors();
 
 app.UseHttpsRedirection();

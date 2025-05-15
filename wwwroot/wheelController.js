@@ -1,5 +1,9 @@
 import { createRoom, addSegments, spinWheel, getRoom } from "./api.js";
 
+// --- Added: Define the base URL here ---
+const BASE_URL = 'http://localhost:5252';
+// --------------------------------------
+
 let currentRoomId = null;
 let theWheel = null;
 let isSpinning = false;
@@ -10,7 +14,9 @@ const delBtn = document.getElementById("delete-segment");
 const pickSelect = document.getElementById("pick-winner-select");
 const pickBtn = document.getElementById("pick-winner-btn");
 const historyDiv = document.getElementById("history");
-const roomIdValueSpan = document.getElementById("roomIdValue");
+// --- Get the new link element ---
+const roomLinkElement = document.getElementById("roomLink");
+// -----------------------------------------
 
 const modal = document.getElementById("resultModal");
 const modalText = document.getElementById("modal-result-text");
@@ -162,16 +168,29 @@ function handleFrontendAnimationComplete() {
 
 async function initializeApp() {
   try {
-    roomIdValueSpan.textContent = "Creating room...";
+    // --- Update the link element initially ---
+    roomLinkElement.textContent = "Creating room...";
+    roomLinkElement.href = "#"; // Keep placeholder
+    // -------------------------------------------------
+
     const roomData = await createRoom();
     currentRoomId = roomData.roomId;
-    roomIdValueSpan.textContent = currentRoomId;
+
+    // --- Get base URL and update the link using the constant ---
+    const roomUrl = `${BASE_URL}/join/?roomId=${currentRoomId}`
+    roomLinkElement.textContent = roomUrl;
+    roomLinkElement.href = roomUrl;
+    // -------------------------------------------------
+
     const roomInfo = await getRoom(currentRoomId);
     initializeWheel(roomInfo.segments || []);
     updateHistory(roomInfo.history || []);
   } catch (error) {
     console.error("Initialization failed:", error);
-    roomIdValueSpan.textContent = "Error initializing!";
+    // --- Update link element on error ---
+    roomLinkElement.textContent = "Error initializing!";
+    roomLinkElement.href = "#"; // Clear potential invalid link
+    // ----------------------------------------------
     alert(`Could not initialize the application: ${error.message}`);
     initializeWheel([]);
   }
@@ -279,7 +298,7 @@ pickBtn.addEventListener("click", () => {
     return;
   }
 
-  const selectedSegmentOneBasedIndex = parseInt(pickSelect.value, 10);
+  const selectedSegmentOneBasedIndex = parseInt(pickSelect.value, 10) - 1;
   const pickedSegmentObject =
     theWheel && theWheel.segments
       ? theWheel.segments[selectedSegmentOneBasedIndex - 1]
