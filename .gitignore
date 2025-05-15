@@ -1,6 +1,7 @@
-/backend/bin/
-/backend/obj/
+/bin/
+/obj/
+/appsettings.Development.json
+/appsettings.json
 /appse
-/backend/appsettings.Development.json
-/backend/appsettings.json
 /frontend/node_modules
+/net9.0
