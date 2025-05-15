@@ -2,97 +2,168 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>SignalR Spin Result</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignalR Room Observer</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        line-height: 1.6;
+        margin: 20px;
+        background-color: #f4f4f4;
+        color: #333;
+      }
+      h1 {
+        color: #0056b3;
+      }
+      div {
+        background-color: #fff;
+        margin-bottom: 10px;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        white-space: pre-wrap; /* Preserve line breaks for JSON */
+        word-break: break-all; /* Break long words */
+      }
+      #roomId {
+        font-weight: bold;
+        color: #007bff;
+      }
+      #roomInfo {
+        border-left: 4px solid #28a745;
+      }
+      #spinResult {
+        border-left: 4px solid #ffc107;
+      }
+      #segmentInfo {
+        border-left: 4px solid #17a2b8;
+      }
+    </style>
   </head>
   <body>
-    <h1>Last Spin Result</h1>
+    <h1>SignalR Room Observer</h1>
     <div id="roomId">Room ID: Waiting for room ID...</div>
     <div id="roomInfo">Waiting for room info...</div>
     <div id="spinResult">Waiting for spin result...</div>
     <div id="segmentInfo">Waiting for segment info...</div>
-    <!-- New element to display segment info -->
-
-    <!-- ✅ Include SignalR client library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
 
-    <!-- ✅ Import your module functions -->
     <script type="module">
-      import { createRoom, addSegments, spinWheel, getRoom } from "./api.js";
+      // Assuming api.js exports getRoom function
+      // This page is for observation only, so only getRoom is needed from api.js
+      import { getRoom } from "/api.js";
 
-      const userId = "test44";
+      const userId = "observer"; // A simple ID for the observer
 
       // Get roomId from URL query parameters
       const urlParams = new URLSearchParams(window.location.search);
       const roomId = urlParams.get("roomId"); // Room ID from URL
-
+      
+      // Check if roomId is present in the URL
       if (!roomId) {
         document.getElementById("roomId").textContent =
           "Room ID: Not provided in URL";
         document.getElementById("spinResult").textContent =
-          "Error: Room ID is required in the URL.";
-        throw new Error("Room ID is missing in the URL.");
-      }
+          "Error: Room ID is required in the URL. Please use a URL like /observer.html?roomId=YOUR_ROOM_ID";
+        // No further action needed if room ID is missing
+      } else {
+         // Display the roomId on the page
+        document.getElementById("roomId").textContent = "Room ID: " + roomId;
 
-      // Display the roomId on the page
-      document.getElementById("roomId").textContent = "Room ID: " + roomId;
+        // Dynamically get the root URL (protocol, host, and port)
+        const rootUrl = `${window.location.protocol}//${window.location.host}`;
+        // Construct the SignalR hub URL
+        const hubUrl = `${rootUrl}/room`; // Assuming the hub is at /room
 
-      // ✅ Display room info using getRoom
-      async function showRoomInfo(roomId) {
-        try {
-          const room = await getRoom(roomId);
-          document.getElementById("roomInfo").textContent =
-            "Room Info:\n" + JSON.stringify(room, null, 2);
-        } catch (err) {
-          console.error("Failed to get room:", err);
-          document.getElementById("roomInfo").textContent =
-            "Error fetching room: " + err.message;
+        console.log("Connecting to SignalR hub at:", hubUrl);
+
+        // Display room info using getRoom
+        async function showRoomInfo(currentRoomId) {
+           if (typeof getRoom === 'function') {
+            try {
+              const room = await getRoom(currentRoomId); // Use the actual getRoom function
+              document.getElementById("roomInfo").textContent =
+                "Room Info:\n" + JSON.stringify(room, null, 2);
+            } catch (err) {
+              console.error("Failed to get room:", err);
+              document.getElementById("roomInfo").textContent =
+                "Error fetching room: " + err.message + ". Make sure api.js is available and getRoom is implemented correctly.";
+            }
+           } else {
+             document.getElementById("roomInfo").textContent =
+               "Room Info: getRoom function not available. Ensure api.js is correctly imported and accessible.";
+           }
         }
-      }
 
-      const connection = new signalR.HubConnectionBuilder()
-        .withUrl("http://localhost:5252/room", {
-          skipNegotiation: true,
-          transport: signalR.HttpTransportType.WebSockets,
-        })
-        .configureLogging(signalR.LogLevel.Information)
-        .build();
 
-      // Listen for SpinResult message
-      connection.on("SpinResult", (msg) => {
-        const data = JSON.parse(msg);
-        document.getElementById("spinResult").textContent =
-          "Spin Result:\n" + JSON.stringify(data, null, 2);
-      });
+        const connection = new signalR.HubConnectionBuilder()
+          .withUrl(hubUrl, { // Use the dynamically constructed hub URL
+            skipNegotiation: true,
+            transport: signalR.HttpTransportType.WebSockets,
+          })
+          .configureLogging(signalR.LogLevel.Information)
+          .build();
 
-      // Listen for SegmentAdded message and update the UI
-      connection.on("SegmentAdded", (json) => {
-        const segmentData = JSON.parse(json);
-        document.getElementById("segmentInfo").textContent =
-          "Segment Added:\n" + JSON.stringify(segmentData, null, 2);
-      });
+        // Listen for SpinResult message
+        connection.on("SpinResult", (msg) => {
+          try {
+            const data = JSON.parse(msg);
+             document.getElementById("spinResult").textContent =
+              "Spin Result:\n" + JSON.stringify(data, null, 2);
+          } catch (e) {
+             document.getElementById("spinResult").textContent =
+              "Spin Result: Received non-JSON message - " + msg;
+             console.error("Failed to parse SpinResult message:", e);
+          }
+        });
 
-      // Listen for CloseConnection message to handle room non-existence
-      connection.on("CloseConnection", () => {
-        console.log("Room does not exist. Disconnecting...");
-        document.getElementById("spinResult").textContent =
-          "Room does not exist. Disconnecting...";
-        connection.stop();
-      });
+        // Listen for SegmentAdded message and update the UI
+        connection.on("SegmentAdded", (json) => {
+          try {
+            const segmentData = JSON.parse(json);
+            document.getElementById("segmentInfo").textContent =
+              "Segment Added:\n" + JSON.stringify(segmentData, null, 2);
+          } catch (e) {
+             document.getElementById("segmentInfo").textContent =
+              "Segment Added: Received non-JSON message - " + json;
+             console.error("Failed to parse SegmentAdded message:", e);
+          }
+        });
 
-      async function run() {
-        try {
-          await connection.start();
-          console.log("Connected.");
-          await connection.invoke("Register", userId, roomId);
-          await showRoomInfo(roomId); // ✅ Show room info after registering
-        } catch (err) {
-          console.error("Error:", err);
+        // Listen for CloseConnection message to handle room non-existence or other closures
+        connection.on("CloseConnection", (reason) => {
+          console.log("Connection closed:", reason || "No specific reason provided.");
           document.getElementById("spinResult").textContent =
-            "Error: " + err.message;
-        }
-      }
+            "Connection closed. Reason: " + (reason || "Room may not exist.");
+          connection.stop(); // Ensure the connection is stopped client-side
+        });
 
-      run();
+        // Handle connection closure unexpectedly
+        connection.onclose((error) => {
+            console.error("SignalR connection closed unexpectedly:", error);
+            document.getElementById("spinResult").textContent =
+                "Connection closed unexpectedly. Error: " + (error ? error.message : "Unknown error");
+        });
+
+
+        async function run() {
+          try {
+            await connection.start();
+            console.log("Connected to SignalR.");
+            // Register with the hub using the user ID and the obtained room ID
+            // The Register method might still be needed on the server to associate the connection with the room
+            await connection.invoke("Register", userId, roomId);
+            console.log(`Registered as observer with userId: ${userId} and roomId: ${roomId}`);
+            await showRoomInfo(roomId); // Show room info after registering
+          } catch (err) {
+            console.error("Error connecting or registering with SignalR:", err);
+            document.getElementById("spinResult").textContent =
+              "Error: Could not connect or register. " + err.message + ". Check console for details.";
+          }
+        }
+
+        // Only run the connection logic if roomId is available
+        run();
+      }
     </script>
   </body>
 </html>

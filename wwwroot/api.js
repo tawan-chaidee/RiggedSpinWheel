@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:5252/api/Rooms";
+const BASE_URL = `${window.location.origin}/api/Rooms`;
 
 export async function createRoom() {
   const response = await fetch(BASE_URL, { method: "POST" });
