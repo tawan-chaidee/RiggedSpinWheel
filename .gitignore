@@ -3,3 +3,4 @@
 /appse
 /backend/appsettings.Development.json
 /backend/appsettings.json
+/frontend/node_modules
