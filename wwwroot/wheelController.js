@@ -1,7 +1,7 @@
 import { createRoom, addSegments, spinWheel, getRoom } from "./api.js";
 
 // --- Added: Define the base URL here ---
-const BASE_URL = 'http://localhost:5252';
+const BASE_URL = new URLSearchParams(window.location.search);
 // --------------------------------------
 
 let currentRoomId = null;
