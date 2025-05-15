@@ -1,0 +1,44 @@
+
+  <div id="resultModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <p id="modal-result-text"></p>
+    </div>
+  </div>
+
+  <script type="module" src="wheelController.js"></script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Spin Wheel with History & Actions</title>
+  <link rel="stylesheet" href="index.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/zarocknz/javascript-winwheel@2.7.0/Winwheel.min.js"></script>
+</head>
+<body>
+  <div id="layout">
+    <div id="left-box">
+      <h1>Spin the Wheel!</h1>
+      <div id="room-id-display" style="margin-bottom: 10px; font-size: 0.9em; color: #555;">
+        Room ID: <span id="roomIdValue">Initializing...</span>
+      </div>
+      <div id="wheel-container">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="500" height="500"></canvas>
+      </div>
+    </div>
+
+    <div id="actions">
+      <button id="spin-button">SPIN</button>
+      <button id="add-segment">Add Segment</button>
+      <button id="delete-segment">Delete Picked Segment</button>
+      <select id="pick-winner-select"></select>
+      <button id="pick-winner-btn">Pick Winner</button>
+    </div>
+
+    <div id="history">
+      <h2>History</h2>
+      </div>
+  </div>

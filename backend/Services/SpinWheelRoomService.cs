@@ -11,6 +11,8 @@ public interface ISpinWheelRoomManager
     ISpinWheelState GetRoom(string roomId);
     IEnumerable<ISpinWheelState> GetAllRooms();
     Task<SpinResult> SpinWheelAndBroadcastAsync(string roomId, List<string> future);
+    Task<ISpinWheelState> AddSegmentAndBroadcastAsync(string roomId, string segmentName, int weight);
+
 }
 
 public class SpinWheelRoomManager : ISpinWheelRoomManager
@@ -49,4 +51,23 @@ public class SpinWheelRoomManager : ISpinWheelRoomManager
         Console.WriteLine($"Broadcasted spin in room {roomId}: {spinResult.Current}");
         return spinResult;
     }
+
+public async Task<ISpinWheelState> AddSegmentAndBroadcastAsync(string roomId, string segmentName, int weight)
+{
+    var room = GetRoom(roomId);
+    if (room == null)
+    {
+        Console.WriteLine($"Room '{roomId}' not found.");
+        return null;
+    }
+
+    room.AddSegment(segmentName, weight);
+
+    var json = JsonSerializer.Serialize(room);
+    await _hubContext.Clients.Group(roomId).SendAsync("SegmentAdded", json);
+    Console.WriteLine($"Broadcasted segment addition in room {roomId}: {segmentName} with weight {weight}");
+
+    return room;
+}
+
 }
