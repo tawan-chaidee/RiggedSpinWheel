@@ -8,7 +8,7 @@ public class FrontendController : Controller
     [HttpGet]
     public IActionResult GetWheelController()
     {
-        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Views", "wheel-controller.html");
+        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "wheel-controller.html");
 
         if (!System.IO.File.Exists(filePath))
         {
@@ -23,7 +23,7 @@ public class FrontendController : Controller
     [HttpGet("join/")]
     public IActionResult GetWheelObserver(string roomId)
     {
-        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Views", "wheel-observer.html");
+        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "wheel-observer.html");
 
         if (!System.IO.File.Exists(filePath))
         {
