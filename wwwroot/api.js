@@ -1,23 +1,23 @@
-const BASE_URL = `${window.location.origin}/api/Rooms`;
+const API_HOST = window.location.origin;
+
+const BASE_URL = `${API_HOST}/api/Rooms`;
 
 export async function createRoom() {
   const response = await fetch(BASE_URL, { method: "POST" });
   if (!response.ok)
     throw new Error(`Failed to create room: ${response.statusText}`);
-  const data = await response.json();
-  return data;
+  return response.json();
 }
 
 export async function getRoom(roomId) {
   const response = await fetch(`${BASE_URL}/${roomId}`);
   if (!response.ok)
     throw new Error(`Failed to get room ${roomId}: ${response.statusText}`);
-  const data = await response.json();
-  return data;
+  return response.json();
 }
 
 export async function addSegments(roomId, segments) {
-  const url = `http://localhost:5252/api/Rooms/${roomId}/segments/batch`;
+  const url = `${BASE_URL}/${roomId}/segments/batch`;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -27,36 +27,26 @@ export async function addSegments(roomId, segments) {
 }
 
 export async function spinWheel(roomId, winnerName = null) {
-  // winnerName is optional
   const url = `${BASE_URL}/${roomId}/spin`;
-  let requestBody;
-
-  if (winnerName) {
-    requestBody = JSON.stringify([winnerName]); // Send winner name in an array as per your example
-  } else {
-    requestBody = JSON.stringify([]); // Empty array for a random spin
-  }
-
+  const requestBody = winnerName ? JSON.stringify([winnerName]) : JSON.stringify([]);
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: requestBody,
   });
   if (!response.ok) {
-    // Attempt to get error message from backend if available
-    const errorData = await response.text(); // Use .text() first in case it's not JSON
+    const errorData = await response.text();
     throw new Error(`Spin wheel failed: ${response.statusText} - ${errorData}`);
   }
-  const data = await response.json();
-  return data;
+  return response.json();
 }
 
 export async function deleteTestSegment(roomId) {
-  // This API seems specific, retained as is
   const url = `${BASE_URL}/${roomId}/game/segments/test`;
   const response = await fetch(url, { method: "DELETE" });
   return response.ok;
 }
+
 
 // runDemo can be kept for testing api.js, ensure it calls spinWheel appropriately
 async function runDemo() {
@@ -112,4 +102,4 @@ async function runDemo() {
   }
 }
 
-runDemo();
+// runDemo();
