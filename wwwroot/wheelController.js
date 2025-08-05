@@ -1,410 +1,255 @@
-import { createRoom, addSegments, spinWheel, getRoom } from "./api.js";
+import { createRoom, addSegments, spinWheel, getRoom, deleteSegment } from "./api.js";
 
-// --- Added: Define the base URL here ---
-const BASE_URL = new URLSearchParams(window.location.search);
-// --------------------------------------
-
-let currentRoomId = null;
-let theWheel = null;
-let isSpinning = false;
-
-const spinBtn = document.getElementById("spin-button");
-const addBtn = document.getElementById("add-segment");
-const delBtn = document.getElementById("delete-segment");
-const pickSelect = document.getElementById("pick-winner-select");
-const pickBtn = document.getElementById("pick-winner-btn");
-const historyDiv = document.getElementById("history");
-// --- Get the new link element ---
-const roomLinkElement = document.getElementById("roomLink");
-// -----------------------------------------
-
-const modal = document.getElementById("resultModal");
-const modalText = document.getElementById("modal-result-text");
-const modalClose = document.querySelector(".modal .close");
-
+// --- Constants ---
 const SEGMENT_COLORS = [
-  "#8A2BE2",
-  "#5F9EA0",
-  "#D2691E",
-  "#FF7F50",
-  "#6495ED",
-  "#DC143C",
-  "#00FFFF",
-  "#00008B",
-  "#008B8B",
-  "#B8860B",
-  "#A9A9A9",
-  "#006400",
-  "#BDB76B",
-  "#8B008B",
-  "#556B2F",
-  "#FF8C00",
-  "#9932CC",
-  "#8B0000",
-  "#E9967A",
-  "#9400D3",
+    "#8A2BE2", "#5F9EA0", "#D2691E", "#FF7F50", "#6495ED",
+    "#DC143C", "#00FFFF", "#00008B", "#008B8B", "#B8860B",
+    "#A9A9A9", "#006400", "#BDB76B", "#8B008B", "#556B2F",
+    "#FF8C00", "#9932CC", "#8B0000", "#E9967A", "#9400D3",
 ];
-let colorIndex = 0;
 
-function getNextFillStyle() {
-  const color = SEGMENT_COLORS[colorIndex % SEGMENT_COLORS.length];
-  colorIndex++;
-  return color;
+const PLACEHOLDER_TEXT = "Add Segments";
+
+// --- Elements ---
+const SPIN_BUTTON = document.getElementById("spin-button");
+const ADD_BUTTON = document.getElementById("add-segment");
+const DELETE_BUTTON = document.getElementById("delete-segment");
+const PICK_SELECT = document.getElementById("pick-winner-select");
+const PICK_BUTTON = document.getElementById("pick-winner-btn");
+const HISTORY_DIV = document.getElementById("history");
+const ROOM_LINK = document.getElementById("roomLink");
+const MODAL = document.getElementById("resultModal");
+const MODAL_TEXT = document.getElementById("modal-result-text");
+const MODAL_CLOSE = document.querySelector(".modal .close");
+const WHEEL_CONTAINER = document.getElementById("wheel-container");
+
+// --- State ---
+const state = {
+    roomId: null,
+    wheel: null,
+    isSpinning: false,
+    colorIndex: 0,
+};
+
+// --- Functions ---
+function getNextColor() {
+    return SEGMENT_COLORS[state.colorIndex++ % SEGMENT_COLORS.length];
 }
 
-function resetColorIndex() {
-  colorIndex = 0;
+function renderWheel(segments, onComplete) {
+    state.colorIndex = 0;
+    WHEEL_CONTAINER.innerHTML = `
+        <div class="pointer"></div>
+        <canvas id="wheel" width="500" height="500"></canvas>
+    `;
+
+    const canvasId = "wheel";
+    const wheelSegments = segments.length
+        ? segments.map(s => ({
+            text: s.name,
+            fillStyle: getNextColor(),
+            data: { weight: s.weight },
+        }))
+        : [{ text: PLACEHOLDER_TEXT, fillStyle: "#cccccc" }];
+
+    const wheel = new Winwheel({
+        canvasId,
+        outerRadius: 200,
+        centerX: 250,
+        centerY: 250,
+        lineWidth: 1,
+        strokeStyle: "silver",
+        textAlignment: "center",
+        textFontFamily: "Arial",
+        textFontSize: 16,
+        numSegments: wheelSegments.length,
+        segments: wheelSegments,
+        animation: {
+            type: "spinToStop",
+            duration: 8,
+            spins: 10,
+            callbackFinished: onComplete,
+        },
+    });
+
+    renderPickList(wheel.segments);
+    return wheel;
 }
 
-function initializeWheel(backendSegments = []) {
-  resetColorIndex();
-  const wheelContainer = document.getElementById("wheel-container");
-  if (theWheel) {
-    wheelContainer.innerHTML =
-      '<div class="pointer"></div><canvas id="wheel" width="500" height="500"></canvas>';
-  }
+function renderPickList(segments) {
+    PICK_SELECT.innerHTML = "";
+    const validSegments = segments.slice(1).filter(s => s && s.text !== PLACEHOLDER_TEXT);
 
-  let winwheelSegments = backendSegments.map((s) => ({
-    text: String(s.name),
-    fillStyle: getNextFillStyle(),
-    data: { weight: s.weight },
-  }));
+    if (!validSegments.length) {
+        const opt = new Option("No segments available", "", true, false);
+        opt.disabled = true;
+        PICK_SELECT.add(opt);
+        return;
+    }
 
-  if (winwheelSegments.length === 0) {
-    winwheelSegments = [{ text: "Add Segments", fillStyle: "#cccccc" }];
-  }
-
-  theWheel = new Winwheel({
-    canvasId: "wheel",
-    outerRadius: 200,
-    centerX: 250,
-    centerY: 250,
-    lineWidth: 1,
-    strokeStyle: "silver",
-    textAlignment: "center",
-    textFontFamily: "Arial",
-    textFontSize: 16,
-    numSegments: winwheelSegments.length,
-    segments: winwheelSegments,
-    animation: {
-      type: "spinToStop",
-      duration: 8,
-      spins: 10,
-      callbackFinished: handleFrontendAnimationComplete,
-    },
-  });
-  refreshPickList();
-}
-
-function updateWheelDisplayFromServer() {
-  if (!currentRoomId) return;
-  getRoom(currentRoomId)
-    .then((roomInfo) => {
-      initializeWheel(roomInfo.segments || []);
-      updateHistory(roomInfo.history || []);
-    })
-    .catch((error) => {
-      console.error("Error fetching room details to update wheel:", error);
+    validSegments.forEach((seg, i) => {
+        PICK_SELECT.add(new Option(`${i + 1}: ${seg.text}`, i + 1));
     });
 }
 
-function refreshPickList() {
-  pickSelect.innerHTML = "";
-  if (
-    !theWheel ||
-    !theWheel.segments ||
-    theWheel.segments.length === 0 ||
-    (theWheel.segments.length === 1 &&
-      theWheel.segments[0].text === "Add Segments")
-  ) {
-    const opt = document.createElement("option");
-    opt.text = "No segments available";
-    opt.disabled = true;
-    pickSelect.add(opt);
-    return;
-  }
-  theWheel.segments.forEach((seg, idx) => {
-    if (seg && seg.text !== "Add Segments") {
-      const opt = document.createElement("option");
-      opt.value = idx + 1;
-      opt.text = `${idx + 1}: ${seg.text}`;
-      pickSelect.add(opt);
+function renderHistory(history) {
+    HISTORY_DIV.innerHTML = "<h2>History</h2>";
+    if (!history.length) {
+        HISTORY_DIV.appendChild(Object.assign(document.createElement("div"), { textContent: "No spin history yet." }));
+        return;
     }
-  });
+    history.slice().reverse().forEach(item => {
+        HISTORY_DIV.appendChild(Object.assign(document.createElement("div"), { textContent: item }));
+    });
 }
 
-function updateHistory(historyArray) {
-  const historyContentH2 = historyDiv.querySelector("h2");
-  historyDiv.innerHTML = "";
-  if (historyContentH2) historyDiv.appendChild(historyContentH2);
-  else {
-    const h2 = document.createElement("h2");
-    h2.textContent = "History";
-    historyDiv.appendChild(h2);
-  }
-
-  if (historyArray && historyArray.length > 0) {
-    historyArray
-      .slice()
-      .reverse()
-      .forEach((item) => {
-        const entry = document.createElement("div");
-        entry.textContent = String(item);
-        historyDiv.appendChild(entry);
-      });
-  } else {
-    const entry = document.createElement("div");
-    entry.textContent = "No spin history yet.";
-    historyDiv.appendChild(entry);
-  }
+function updateRoomLink(text, url = "#") {
+    ROOM_LINK.textContent = text;
+    ROOM_LINK.href = url;
 }
 
-// callback after WinWheel's animation finishes.
-function handleFrontendAnimationComplete() {
-  isSpinning = false;
-  spinBtn.disabled = false;
-  pickBtn.disabled = false;
+function toggleControls(disabled) {
+    [SPIN_BUTTON, PICK_BUTTON, ADD_BUTTON, DELETE_BUTTON].forEach(btn => btn.disabled = disabled);
 }
 
-async function initializeApp() {
-  try {
-    // --- Update the link element initially ---
-    roomLinkElement.textContent = "Creating room...";
-    roomLinkElement.href = "#"; // Keep placeholder
-    // -------------------------------------------------
-
-    const roomData = await createRoom();
-    currentRoomId = roomData.roomId;
-
-    // --- Get base URL and update the link using the constant ---
-    const roomUrl = `${BASE_URL}/join/?roomId=${currentRoomId}`
-    roomLinkElement.textContent = roomUrl;
-    roomLinkElement.href = roomUrl;
-    // -------------------------------------------------
-
-    const roomInfo = await getRoom(currentRoomId);
-    initializeWheel(roomInfo.segments || []);
-    updateHistory(roomInfo.history || []);
-  } catch (error) {
-    console.error("Initialization failed:", error);
-    // --- Update link element on error ---
-    roomLinkElement.textContent = "Error initializing!";
-    roomLinkElement.href = "#"; // Clear potential invalid link
-    // ----------------------------------------------
-    alert(`Could not initialize the application: ${error.message}`);
-    initializeWheel([]);
-  }
+function showModal(text) {
+    MODAL_TEXT.textContent = text;
+    MODAL.style.display = "block";
 }
 
-// Unified function to perform spin (random or picked) and handle outcome
-async function performSpinAndHandleOutcome(
-  roomId,
-  winnerNameToPick = null,
-  operationType = "Spin"
-) {
-  isSpinning = true;
-  spinBtn.disabled = true;
-  pickBtn.disabled = true;
+function hideModal() {
+    MODAL.style.display = "none";
+}
 
-  theWheel.stopAnimation(false);
-  theWheel.rotationAngle = theWheel.rotationAngle % 360;
+function parseSegmentInput(input) {
+    return (input || "").split(",").map(entry => {
+        const [nameRaw, weightRaw] = entry.trim().split(":");
+        const name = nameRaw?.trim();
+        const weight = parseInt(weightRaw, 10);
+        return name ? { name, weight: !isNaN(weight) && weight > 0 ? weight : 1 } : null;
+    }).filter(Boolean);
+}
 
-  try {
-    const spinApiResponse = await spinWheel(roomId, winnerNameToPick);
-    const backendWinnerName = spinApiResponse.result.current;
-    const newState = spinApiResponse.result.newState;
-    const newHistory = spinApiResponse.result.history;
+function onSpinComplete() {
+    state.isSpinning = false;
+    toggleControls(false);
+}
 
-    if (winnerNameToPick && backendWinnerName !== winnerNameToPick) {
-      console.warn(
-        `Backend winner '${backendWinnerName}' differs from requested '${winnerNameToPick}'. Trusting backend.`
-      );
+async function syncState() {
+    if (!state.roomId) return;
+    try {
+        const { segments = [], history = [] } = await getRoom(state.roomId);
+        state.wheel = renderWheel(segments, onSpinComplete);
+        renderHistory(history);
+    } catch (err) {
+        console.error("Sync error:", err);
     }
-
-    let winningSegmentActualIndex = -1;
-    if (theWheel && theWheel.segments) {
-      for (let i = 0; i < theWheel.segments.length; i++) {
-        if (
-          theWheel.segments[i] &&
-          theWheel.segments[i].text === backendWinnerName
-        ) {
-          winningSegmentActualIndex = i + 1;
-          break;
-        }
-      }
-    }
-
-    if (winningSegmentActualIndex !== -1) {
-      theWheel.animation.stopAngle = theWheel.getRandomForSegment(
-        winningSegmentActualIndex
-      );
-    } else {
-      console.warn(
-        `Winner '${backendWinnerName}' not found on frontend wheel for animation. Wheel will spin randomly before state update.`
-      );
-      theWheel.animation.stopAngle = Math.random() * 360; // Visual spin only
-    }
-
-    // Define what happens after THIS specific animation sequence (triggered by backend response)
-    theWheel.animation.callbackFinished = () => {
-      modalText.textContent = `The winner is: ${backendWinnerName}! ${
-        operationType === "Pick" ? "(Manually Picked)" : ""
-      }`;
-      modal.style.display = "block";
-      initializeWheel(newState); // Re-initialize wheel with new segments from backend
-      updateHistory(newHistory); // Update history from backend
-      isSpinning = false;
-      spinBtn.disabled = false;
-      pickBtn.disabled = false;
-    };
-    theWheel.startAnimation();
-  } catch (error) {
-    console.error(`Error during ${operationType.toLowerCase()}:`, error);
-    alert(
-      `Failed to ${operationType.toLowerCase()} winner via backend: ${
-        error.message
-      }. Please try again.`
-    );
-    isSpinning = false;
-    spinBtn.disabled = false;
-    pickBtn.disabled = false;
-    updateWheelDisplayFromServer(); // Resync frontend with server state
-  }
 }
 
-spinBtn.addEventListener("click", () => {
-  if (!currentRoomId || isSpinning) {
-    alert(isSpinning ? "Spin in progress..." : "Room not initialized.");
-    return;
-  }
-  if (
-    !theWheel ||
-    theWheel.numSegments === 0 ||
-    (theWheel.numSegments === 1 && theWheel.segments[0].text === "Add Segments")
-  ) {
-    alert("Please add segments to the wheel before spinning!");
-    return;
-  }
-  performSpinAndHandleOutcome(currentRoomId, null, "Spin");
-});
+async function performSpin(pickName = null) {
+    if (state.isSpinning) return alert("Already spinning!");
+    state.isSpinning = true;
+    toggleControls(true);
+    state.wheel.stopAnimation(false);
+    state.wheel.rotationAngle %= 360;
 
-pickBtn.addEventListener("click", () => {
-  if (!currentRoomId || isSpinning) {
-    alert(isSpinning ? "Operation in progress..." : "Room not initialized.");
-    return;
-  }
-  if (!pickSelect.value) {
-    alert("Please select a segment to pick as winner.");
-    return;
-  }
+    try {
+        const { result } = await spinWheel(state.roomId, pickName);
+        const winner = result.current;
+        const match = state.wheel.segments.find(s => s && s.text === winner);
 
-  const selectedSegmentOneBasedIndex = parseInt(pickSelect.value, 10) - 1;
-  const pickedSegmentObject =
-    theWheel && theWheel.segments
-      ? theWheel.segments[selectedSegmentOneBasedIndex - 1]
-      : null;
+        state.wheel.animation.stopAngle = match
+            ? state.wheel.getRandomForSegment(state.wheel.segments.indexOf(match))
+            : Math.random() * 360;
 
-  if (!pickedSegmentObject || pickedSegmentObject.text === "Add Segments") {
-    alert("Cannot pick an invalid or placeholder segment.");
-    return;
-  }
-  const winnerNameToPick = pickedSegmentObject.text;
-  performSpinAndHandleOutcome(currentRoomId, winnerNameToPick, "Pick");
-});
+        state.wheel.animation.callbackFinished = () => {
+            showModal(`The winner is: ${winner}! ${pickName ? "(Picked)" : ""}`);
+            state.wheel = renderWheel(result.newState, onSpinComplete);
+            renderHistory(result.history);
+            state.isSpinning = false;
+            toggleControls(false);
+        };
 
-addBtn.addEventListener("click", async () => {
-  if (!currentRoomId) {
-    alert("Room not initialized.");
-    return;
-  }
+        state.wheel.startAnimation();
+    } catch (err) {
+        console.error("Spin failed:", err);
+        alert(`Spin failed: ${err.message}`);
+        state.isSpinning = false;
+        toggleControls(false);
+        await syncState();
+    }
+}
 
-  const inputString = prompt(
-    "Enter segments as Name1:Weight1, Name2:Weight2, ... (e.g., Alice:2, Bob, Charlie:3)\nWeight defaults to 1 if omitted.",
-    "ParticipantA:1, ParticipantB:2"
-  );
+function handleSpin() {
+    if (!state.roomId) return alert("Room not initialized.");
+    const hasValidSegments = state.wheel.segments.some(s => s && s.text !== PLACEHOLDER_TEXT);
+    if (!hasValidSegments) return alert("Please add segments first.");
+    performSpin();
+}
 
-  if (inputString) {
-    const segmentEntries = inputString.split(",");
-    const newSegments = segmentEntries
-      .map((entry) => {
-        const parts = entry.trim().split(":");
-        const name = parts[0].trim();
-        let weight = 1;
-        if (parts.length > 1) {
-          const parsedWeight = parseInt(parts[1].trim(), 10);
-          if (!isNaN(parsedWeight) && parsedWeight > 0) weight = parsedWeight;
-          else if (name)
-            console.warn(`Invalid weight for '${name}', defaulting to 1.`);
-          else return null;
-        }
-        return name ? { name, weight } : null;
-      })
-      .filter((segment) => segment !== null && segment.name !== "");
+function handlePickWinner() {
+    const selectedIndex = parseInt(PICK_SELECT.value, 10);
+    const seg = state.wheel.segments[selectedIndex];
+    if (!seg || seg.text === PLACEHOLDER_TEXT) return alert("Invalid segment selected.");
+    performSpin(seg.text);
+}
 
-    if (newSegments.length > 0) {
-      try {
-        addBtn.disabled = true;
-        const success = await addSegments(currentRoomId, newSegments);
-        if (success) updateWheelDisplayFromServer();
-        else alert("Failed to add segments via backend.");
-      } catch (error) {
-        console.error("Error adding segments:", error);
-        alert(`Error adding segments: ${error.message}`);
-      } finally {
-        addBtn.disabled = false;
-      }
-    } else alert("No valid segments entered. Format: Name:Weight or Name.");
-  }
-});
+async function handleAddSegments() {
+    if (!state.roomId) return alert("Room not initialized.");
+    const input = prompt("Enter segments (Name[:Weight], separated by commas)", "Alice:2, Bob, Charlie:3");
+    const segments = parseSegmentInput(input);
+    if (!segments.length) return alert("No valid segments entered.");
+    toggleControls(true);
+    try {
+        await addSegments(state.roomId, segments);
+        await syncState();
+    } catch (err) {
+        console.error("Add segments failed:", err);
+        alert(err.message);
+    } finally {
+        toggleControls(false);
+    }
+}
 
-delBtn.addEventListener("click", async () => {
-  if (!currentRoomId || !pickSelect.value) {
-    alert("Room not initialized or no segment selected.");
-    return;
-  }
+async function handleDeleteSegment() {
+    const selectedIndex = parseInt(PICK_SELECT.value, 10);
+    const seg = state.wheel.segments[selectedIndex];
+    if (!state.roomId || !seg || seg.text === PLACEHOLDER_TEXT) return alert("Invalid selection.");
+    if (!confirm(`Delete segment \"${seg.text}\"?`)) return;
+    toggleControls(true);
+    try {
+        const success = await deleteSegment(state.roomId, seg.text);
+        if (!success) throw new Error("Delete failed");
+        await syncState();
+    } catch (err) {
+        console.error("Delete failed:", err);
+        alert(err.message);
+    } finally {
+        toggleControls(false);
+    }
+}
 
-  const selectedIndex = parseInt(pickSelect.value, 10) - 1;
-  const segmentNameToDelete =
-    theWheel && theWheel.segments[selectedIndex]
-      ? theWheel.segments[selectedIndex].text
-      : null;
+// --- Entry Point ---
+(async function init() {
+    SPIN_BUTTON.onclick = handleSpin;
+    PICK_BUTTON.onclick = handlePickWinner;
+    ADD_BUTTON.onclick = handleAddSegments;
+    DELETE_BUTTON.onclick = handleDeleteSegment;
+    MODAL_CLOSE.onclick = hideModal;
+    window.onclick = e => e.target === MODAL && hideModal();
 
-  if (!segmentNameToDelete || segmentNameToDelete === "Add Segments") {
-    alert("Invalid segment selected for deletion.");
-    return;
-  }
-  if (!confirm(`Delete segment: "${segmentNameToDelete}"?`)) return;
-
-  const currentBackendSegments = theWheel.segments
-    .filter(
-      (seg, idx) => idx !== selectedIndex && seg && seg.text !== "Add Segments"
-    )
-    .map((seg) => ({
-      name: seg.text,
-      weight: seg.data && seg.data.weight ? seg.data.weight : 1,
-    }));
-
-  try {
-    delBtn.disabled = true;
-    const success = await addSegments(currentRoomId, currentBackendSegments); // Overwrite with new list
-    if (success) updateWheelDisplayFromServer();
-    else
-      alert(
-        `Failed to update backend after attempting to delete "${segmentNameToDelete}".`
-      );
-  } catch (error) {
-    console.error("Error deleting segment:", error);
-    alert(`Error deleting segment: ${error.message}`);
-  } finally {
-    delBtn.disabled = false;
-  }
-});
-
-modalClose.onclick = () => {
-  modal.style.display = "none";
-};
-window.onclick = (event) => {
-  if (event.target === modal) modal.style.display = "none";
-};
-
-initializeApp();
+    try {
+        updateRoomLink("Creating room...");
+        const { roomId } = await createRoom();
+        state.roomId = roomId;
+        const base = window.location.origin + window.location.pathname.replace("index.html", "");
+        const url = `${base}join/?roomId=${roomId}`;
+        updateRoomLink(url, url);
+        await syncState();
+    } catch (err) {
+        console.error("Init failed:", err);
+        updateRoomLink("Error initializing!");
+        alert(err.message);
+        state.wheel = renderWheel([], onSpinComplete);
+    }
+})();

@@ -41,65 +41,63 @@ export async function spinWheel(roomId, winnerName = null) {
   return response.json();
 }
 
-export async function deleteTestSegment(roomId) {
-  const url = `${BASE_URL}/${roomId}/game/segments/test`;
+export async function deleteSegment(roomId, segmentName) {
+  const url = `${BASE_URL}/${roomId}/segments/${segmentName}`;
   const response = await fetch(url, { method: "DELETE" });
   return response.ok;
 }
 
 
-// runDemo can be kept for testing api.js, ensure it calls spinWheel appropriately
+// Poor man unit test
 async function runDemo() {
   const segments = [
     { name: "Alice", weight: 1 },
     { name: "Bob", weight: 2 },
     { name: "Charlie", weight: 3 },
   ];
+
   try {
-    console.log("Creating a new room...");
+    // --- Test: Create Room ---
     const { roomId } = await createRoom();
-    console.log("Room ID:", roomId);
+    if (!roomId) throw new Error("❌ Failed to create room");
+    console.log("✅ Room created:", roomId);
 
-    if (!roomId) throw new Error("Room ID not obtained in demo.");
-
-    console.log("Adding segments...");
+    // --- Test: Add Segments ---
     const added = await addSegments(roomId, segments);
-    console.log("Segments added:", added);
+    if (!added) throw new Error("❌ Failed to add segments");
+    console.log("✅ Segments added");
 
-    console.log("Fetching room info...");
-    const roomInfo = await getRoom(roomId);
-    console.log("Room Info:", roomInfo);
+    // --- Test: Get Room Info ---
+    const room = await getRoom(roomId);
+    if (!room || !room.segments || room.segments.length !== segments.length)
+      throw new Error("❌ Room info incorrect after adding segments");
+    console.log("✅ Room info fetched correctly");
 
-    if (roomInfo && roomInfo.segments && roomInfo.segments.length > 0) {
-      console.log("Spinning the wheel (random)...");
-      const randomResult = await spinWheel(roomId); // Test random spin
-      console.log("Random Spin Result:", JSON.stringify(randomResult, null, 2));
+    // --- Test: Random Spin ---
+    const randomSpin = await spinWheel(roomId);
+    const randomWinner = randomSpin?.result?.newState?.[0]?.name;
+    if (!randomWinner) throw new Error("❌ Random spin failed");
+    console.log("✅ Random spin successful:", randomWinner);
 
-      if (
-        randomResult.result &&
-        randomResult.result.newState &&
-        randomResult.result.newState.length > 0
-      ) {
-        const pickWinnerName = randomResult.result.newState[0].name; // Pick one of the remaining
-        console.log(`Spinning the wheel (picking '${pickWinnerName}')...`);
-        const pickedResult = await spinWheel(roomId, pickWinnerName); // Test picked spin
-        console.log(
-          "Picked Spin Result:",
-          JSON.stringify(pickedResult, null, 2)
-        );
-      } else {
-        console.log(
-          "Skipping picked spin test as no segments remaining after first spin or error."
-        );
-      }
-    } else {
-      console.log(
-        "Skipping spin tests due to no segments or error fetching room info."
-      );
-    }
-  } catch (error) {
-    console.error("Demo failed:", error.message);
+    // --- Test: Pick Winner Spin ---
+    const pickedSpin = await spinWheel(roomId, randomWinner);
+    const pickedWinner = pickedSpin?.result?.newState?.[0]?.name;
+    if (pickedWinner !== randomWinner)
+      throw new Error("❌ Picked spin did not match expected winner");
+    console.log("✅ Picked spin successful:", pickedWinner);
+
+    // --- Test: Delete Segment ---
+    const deleted = await deleteSegment(roomId, randomWinner);
+    if (!deleted) throw new Error("❌ Failed to delete segment");
+    const updatedRoom = await getRoom(roomId);
+    const stillExists = updatedRoom.segments.find(s => s.name === randomWinner);
+    if (stillExists) throw new Error("❌ Segment still exists after deletion");
+    console.log("✅ Segment deleted successfully:", randomWinner);
+
+    console.log("🎉 All tests passed!");
+  } catch (err) {
+    console.error("❌ Test failed:", err.message);
   }
 }
 
-// runDemo();
+runDemo();
