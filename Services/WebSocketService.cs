@@ -39,17 +39,6 @@ public class Room : Hub
         }
     }
 
-    // Broadcast a JSON message to the specified room
-    public Task Broadcast(string roomId, string jsonMessage)
-    {
-         if (_roomManager.GetRoom(roomId) == null)
-         {
-             Console.WriteLine($"Attempted to broadcast to non-existent room {roomId}.");
-             return Task.CompletedTask;
-         }
-         return Clients.Group(roomId).SendAsync("ReceiveMessage", jsonMessage);
-    }
-
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         if (_users.TryRemove(Context.ConnectionId, out var info))
