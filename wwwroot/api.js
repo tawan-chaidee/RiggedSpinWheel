@@ -28,7 +28,9 @@ export async function addSegments(roomId, segments) {
 
 export async function spinWheel(roomId, winnerName = null) {
   const url = `${BASE_URL}/${roomId}/spin`;
-  const requestBody = winnerName ? JSON.stringify([winnerName]) : JSON.stringify([]);
+  const requestBody = winnerName
+    ? JSON.stringify([winnerName])
+    : JSON.stringify([]);
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -46,7 +48,6 @@ export async function deleteSegment(roomId, segmentName) {
   const response = await fetch(url, { method: "DELETE" });
   return response.ok;
 }
-
 
 // Poor man unit test
 async function runDemo() {
@@ -75,24 +76,31 @@ async function runDemo() {
 
     // --- Test: Random Spin ---
     const randomSpin = await spinWheel(roomId);
+
     const randomWinner = randomSpin?.result?.newState?.[0]?.name;
     if (!randomWinner) throw new Error("❌ Random spin failed");
     console.log("✅ Random spin successful:", randomWinner);
 
-    // --- Test: Pick Winner Spin ---
-    const pickedSpin = await spinWheel(roomId, randomWinner);
-    const pickedWinner = pickedSpin?.result?.newState?.[0]?.name;
-    if (pickedWinner !== randomWinner)
-      throw new Error("❌ Picked spin did not match expected winner");
+    // --- Test: Pick Winner Spin (deterministic) ---
+    const pickTarget = "Alice"; // Known existing name
+    const pickedSpin = await spinWheel(roomId, pickTarget);
+    const pickedWinner = pickedSpin?.result?.current;
+    if (pickedWinner !== pickTarget)
+      throw new Error(
+        `❌ Picked spin returned '${pickedWinner}' instead of '${pickTarget}'`
+      );
     console.log("✅ Picked spin successful:", pickedWinner);
 
-    // --- Test: Delete Segment ---
-    const deleted = await deleteSegment(roomId, randomWinner);
+    // --- Test: Delete Segment (deterministic) ---
+    const targetToDelete = "Charlie";
+    const deleted = await deleteSegment(roomId, targetToDelete);
     if (!deleted) throw new Error("❌ Failed to delete segment");
     const updatedRoom = await getRoom(roomId);
-    const stillExists = updatedRoom.segments.find(s => s.name === randomWinner);
+    const stillExists = updatedRoom.segments.find(
+      (s) => s.name === targetToDelete
+    );
     if (stillExists) throw new Error("❌ Segment still exists after deletion");
-    console.log("✅ Segment deleted successfully:", randomWinner);
+    console.log("✅ Segment deleted successfully:", targetToDelete);
 
     console.log("🎉 All tests passed!");
   } catch (err) {
