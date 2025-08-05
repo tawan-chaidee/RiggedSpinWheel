@@ -81,6 +81,32 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
+    /// Get spin history of a room
+    /// GET api/rooms/{roomId}/history
+    /// </summary>
+    [HttpGet("{roomId}/history")]
+    public IActionResult GetHistory(string roomId)
+    {
+        var room = _manager.GetRoom(roomId);
+        return room != null
+            ? Ok(room.History)
+            : NotFound(new { error = $"Room '{roomId}' not found." });
+    }
+
+    /// <summary>
+    /// Get current segments of a room
+    /// GET api/rooms/{roomId}/segments
+    /// </summary>
+    [HttpGet("{roomId}/segments")]
+    public IActionResult GetSegments(string roomId)
+    {
+        var room = _manager.GetRoom(roomId);
+        return room != null
+            ? Ok(room.Segments)
+            : NotFound(new { error = $"Room '{roomId}' not found." });
+    }
+
+    /// <summary>
     /// Add a new segment to a room’s wheel and broadcast the update
     /// POST api/rooms/{roomId}/segments
     /// </summary>
@@ -102,7 +128,10 @@ public class RoomsController : ControllerBase
         }
     }
 
-    // Batch support Todo
+    /// <summary>
+    /// Add multiple segments to a room's wheel and broadcast each update
+    /// POST api/rooms/{roomId}/segments/batch
+    /// </summary>
     [HttpPost("{roomId}/segments/batch")]
     public async Task<IActionResult> AddSegments(
         string roomId,
@@ -111,7 +140,6 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            // Get the room
             var room = _manager.GetRoom(roomId);
             if (room == null)
             {
@@ -129,5 +157,20 @@ public class RoomsController : ControllerBase
         {
             return NotFound(new { error = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Remove a segment from the wheel
+    /// DELETE api/rooms/{roomId}/segments/{name}
+    /// </summary>
+    [HttpDelete("{roomId}/segments/{name}")]
+    public IActionResult RemoveSegment(string roomId, string name)
+    {
+        var room = _manager.GetRoom(roomId);
+        if (room == null)
+            return NotFound(new { error = $"Room '{roomId}' not found." });
+
+        room.RemoveSegment(name);
+        return NoContent();
     }
 }
