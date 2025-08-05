@@ -5,9 +5,9 @@ using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 
 public class Segment
@@ -68,9 +68,7 @@ public class SpinWheel : ISpinWheelState
         var previous = History.LastOrDefault();
 
         // Determine current spin
-        string current = forcedResults.Count > 0
-            ? forcedResults.Dequeue()
-            : GetRandomSegment();
+        string current = forcedResults.Count > 0 ? forcedResults.Dequeue() : GetRandomSegment();
 
         // Remove current from wheel
         Segments.RemoveAll(s => s.Name == current);
@@ -83,7 +81,7 @@ public class SpinWheel : ISpinWheelState
             Current = current,
             Previous = previous,
             NewState = Segments.ToList(), // copy for immutability
-            History = History.ToList()
+            History = History.ToList(),
         };
     }
 

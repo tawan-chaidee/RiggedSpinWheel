@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
 using System.IO;
+using Microsoft.AspNetCore.Mvc;
 
 [Route("/")]
 public class FrontendController : Controller
@@ -8,7 +8,11 @@ public class FrontendController : Controller
     [HttpGet]
     public IActionResult GetWheelController()
     {
-        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "wheel-controller.html");
+        var filePath = Path.Combine(
+            Directory.GetCurrentDirectory(),
+            "wwwroot",
+            "wheel-controller.html"
+        );
 
         if (!System.IO.File.Exists(filePath))
         {
@@ -23,7 +27,11 @@ public class FrontendController : Controller
     [HttpGet("join/")]
     public IActionResult GetWheelObserver(string roomId)
     {
-        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "wheel-observer.html");
+        var filePath = Path.Combine(
+            Directory.GetCurrentDirectory(),
+            "wwwroot",
+            "wheel-observer.html"
+        );
 
         if (!System.IO.File.Exists(filePath))
         {
@@ -44,4 +52,3 @@ public class FrontendController : Controller
         return Content(rootUrl, "text/plain");
     }
 }
-

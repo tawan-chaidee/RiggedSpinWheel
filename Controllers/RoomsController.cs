@@ -48,9 +48,7 @@ public class RoomsController : ControllerBase
     public IActionResult GetRoom(string roomId)
     {
         var room = _manager.GetRoom(roomId);
-        return room != null
-            ? Ok(room)
-            : NotFound(new { error = $"Room '{roomId}' not found." });
+        return room != null ? Ok(room) : NotFound(new { error = $"Room '{roomId}' not found." });
     }
 
     /// <summary>
@@ -91,8 +89,12 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            var updatedRoom = await _manager.AddSegmentAndBroadcastAsync(roomId, request.Name, request.Weight);
-            return Ok(updatedRoom); 
+            var updatedRoom = await _manager.AddSegmentAndBroadcastAsync(
+                roomId,
+                request.Name,
+                request.Weight
+            );
+            return Ok(updatedRoom);
         }
         catch (KeyNotFoundException ex)
         {
@@ -102,7 +104,10 @@ public class RoomsController : ControllerBase
 
     // Batch support Todo
     [HttpPost("{roomId}/segments/batch")]
-    public async Task<IActionResult> AddSegments(string roomId, [FromBody] List<AddSegmentRequest> segments)
+    public async Task<IActionResult> AddSegments(
+        string roomId,
+        [FromBody] List<AddSegmentRequest> segments
+    )
     {
         try
         {
@@ -125,7 +130,4 @@ public class RoomsController : ControllerBase
             return NotFound(new { error = ex.Message });
         }
     }
-
-
 }
-

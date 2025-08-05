@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.SignalR;
 public class Room : Hub
 {
     // connectionId -> (userName, roomId)
-    private static readonly ConcurrentDictionary<string, (string userName, string roomId)> _users
-        = new ConcurrentDictionary<string, (string, string)>();
+    private static readonly ConcurrentDictionary<string, (string userName, string roomId)> _users =
+        new ConcurrentDictionary<string, (string, string)>();
 
     private readonly ISpinWheelRoomManager _roomManager;
 
@@ -21,21 +21,34 @@ public class Room : Hub
     {
         if (_roomManager.GetRoom(roomId) == null)
         {
-            await Clients.Caller.SendAsync("RegistrationFailed", $"Room '{roomId}' does not exist.");
+            await Clients.Caller.SendAsync(
+                "RegistrationFailed",
+                $"Room '{roomId}' does not exist."
+            );
             Console.WriteLine($"Registration failed for user {userName}. Room {roomId} not found.");
-            return; 
+            return;
         }
 
         if (_users.TryAdd(Context.ConnectionId, (userName, roomId)))
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
-            Console.WriteLine($"User {userName} joined room {roomId} (Connection: {Context.ConnectionId})");
-            await Clients.Caller.SendAsync("RegistrationSuccess", $"Successfully joined room {roomId}.");
+            Console.WriteLine(
+                $"User {userName} joined room {roomId} (Connection: {Context.ConnectionId})"
+            );
+            await Clients.Caller.SendAsync(
+                "RegistrationSuccess",
+                $"Successfully joined room {roomId}."
+            );
         }
         else
         {
-             await Clients.Caller.SendAsync("RegistrationFailed", "Could not register. You might already be in a room.");
-             Console.WriteLine($"User {userName} registration failed for room {roomId} (Connection: {Context.ConnectionId}). Connection ID already exists.");
+            await Clients.Caller.SendAsync(
+                "RegistrationFailed",
+                "Could not register. You might already be in a room."
+            );
+            Console.WriteLine(
+                $"User {userName} registration failed for room {roomId} (Connection: {Context.ConnectionId}). Connection ID already exists."
+            );
         }
     }
 
@@ -44,7 +57,9 @@ public class Room : Hub
         if (_users.TryRemove(Context.ConnectionId, out var info))
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, info.roomId);
-            Console.WriteLine($"User {info.userName} left room {info.roomId} (Connection: {Context.ConnectionId})");
+            Console.WriteLine(
+                $"User {info.userName} left room {info.roomId} (Connection: {Context.ConnectionId})"
+            );
         }
         await base.OnDisconnectedAsync(exception);
     }
