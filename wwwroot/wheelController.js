@@ -106,6 +106,13 @@ function renderHistory(history) {
 function updateRoomLink(text, url = "#") {
     ROOM_LINK.textContent = text;
     ROOM_LINK.href = url;
+    ROOM_LINK.addEventListener('click', e => {
+      const url = ROOM_LINK.href;
+      if (url && url !== '#') {
+        window.open(url, '_blank');
+        e.preventDefault(); 
+      }
+    });    
 }
 
 function toggleControls(disabled) {
