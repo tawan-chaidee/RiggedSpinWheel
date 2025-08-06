@@ -41,14 +41,4 @@ public class FrontendController : Controller
         var htmlContent = System.IO.File.ReadAllText(filePath);
         return Content(htmlContent, "text/html");
     }
-
-    // GET /getRoot
-    [HttpGet("getRoot")]
-    public IActionResult GetRootUrl()
-    {
-        var request = HttpContext.Request;
-        var rootUrl = $"{request.Scheme}://{request.Host}/";
-
-        return Content(rootUrl, "text/plain");
-    }
 }
