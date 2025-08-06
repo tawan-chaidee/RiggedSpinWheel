@@ -11,7 +11,6 @@ public class Room : Hub
 
     private readonly ISpinWheelRoomManager _roomManager;
 
-    // Inject the room manager
     public Room(ISpinWheelRoomManager roomManager)
     {
         _roomManager = roomManager;

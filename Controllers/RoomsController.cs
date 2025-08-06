@@ -164,13 +164,14 @@ public class RoomsController : ControllerBase
     /// DELETE api/rooms/{roomId}/segments/{name}
     /// </summary>
     [HttpDelete("{roomId}/segments/{name}")]
-    public IActionResult RemoveSegment(string roomId, string name)
+    public async Task<IActionResult> RemoveSegment(string roomId, string name)
     {
-        var room = _manager.GetRoom(roomId);
-        if (room == null)
-            return NotFound(new { error = $"Room '{roomId}' not found." });
+        var result = await _manager.DeleteSegmentAndBroadcastAsync(roomId, name);
+        if (result == null)
+        {
+            return NotFound($"Room '{roomId}' not found or segment '{name}' does not exist.");
+        }
 
-        room.RemoveSegment(name);
-        return NoContent();
+        return Ok(result);
     }
 }

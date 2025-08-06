@@ -15,6 +15,7 @@ public interface ISpinWheelRoomManager
         string segmentName,
         int weight
     );
+    Task<ISpinWheelState> DeleteSegmentAndBroadcastAsync(string roomId, string segmentName);
 }
 
 public class SpinWheelRoomManager : ISpinWheelRoomManager
@@ -73,6 +74,26 @@ public class SpinWheelRoomManager : ISpinWheelRoomManager
         Console.WriteLine(
             $"Broadcasted segment addition in room {roomId}: {segmentName} with weight {weight}"
         );
+
+        return room;
+    }
+
+    public async Task<ISpinWheelState> DeleteSegmentAndBroadcastAsync(
+        string roomId,
+        string segmentName
+    )
+    {
+        var room = GetRoom(roomId);
+        if (room == null)
+        {
+            Console.WriteLine($"Room '{roomId}' not found.");
+            return null;
+        }
+        room.RemoveSegment(segmentName);
+
+        var json = JsonSerializer.Serialize(room);
+        await _hubContext.Clients.Group(roomId).SendAsync("SegmentAdded", json);
+        Console.WriteLine($"Broadcasted segment Deletion in room {roomId}: {segmentName}");
 
         return room;
     }
