@@ -7,17 +7,18 @@ public interface ISpinWheelRoomManager
 {
     string CreateRoom();
     bool RemoveRoom(string roomId);
-    ISpinWheelState GetRoom(string roomId);
-    IEnumerable<ISpinWheelState> GetAllRooms();
+    ISpinWheel GetRoom(string roomId);
+    IEnumerable<ISpinWheel> GetAllRooms();
     Task<SpinResult> SpinWheelAsync(string roomId, List<string> future);
-    Task<ISpinWheelState> AddSegmentAsync(string roomId, string segmentName, int weight);
-    Task<ISpinWheelState> DeleteSegmentAsync(string roomId, string segmentName);
+    Task<ISpinWheel> AddSegmentAsync(string roomId, string segmentName, int weight);
+    Task<ISpinWheel> DeleteSegmentAsync(string roomId, string segmentName);
 }
+
 
 public class SpinWheelRoomManager : ISpinWheelRoomManager
 {
-    private ConcurrentDictionary<string, ISpinWheelState> rooms =
-        new ConcurrentDictionary<string, ISpinWheelState>();
+    private ConcurrentDictionary<string, ISpinWheel> rooms =
+        new ConcurrentDictionary<string, ISpinWheel>();
     private readonly IHubContext<Room> _hubContext;
 
     public SpinWheelRoomManager(IHubContext<Room> hubContext)
@@ -35,10 +36,10 @@ public class SpinWheelRoomManager : ISpinWheelRoomManager
 
     public bool RemoveRoom(string roomId) => rooms.TryRemove(roomId, out _);
 
-    public ISpinWheelState GetRoom(string roomId) =>
+    public ISpinWheel GetRoom(string roomId) =>
         rooms.TryGetValue(roomId, out var room) ? room : null;
 
-    public IEnumerable<ISpinWheelState> GetAllRooms() => rooms.Values;
+    public IEnumerable<ISpinWheel> GetAllRooms() => rooms.Values;
 
     public async Task<SpinResult> SpinWheelAsync(string roomId, List<string> future)
     {
@@ -50,7 +51,7 @@ public class SpinWheelRoomManager : ISpinWheelRoomManager
         return spinResult;
     }
 
-    public async Task<ISpinWheelState> AddSegmentAsync(
+    public async Task<ISpinWheel> AddSegmentAsync(
         string roomId,
         string segmentName,
         int weight
@@ -74,7 +75,7 @@ public class SpinWheelRoomManager : ISpinWheelRoomManager
         return room;
     }
 
-    public async Task<ISpinWheelState> DeleteSegmentAsync(string roomId, string segmentName)
+    public async Task<ISpinWheel> DeleteSegmentAsync(string roomId, string segmentName)
     {
         var room = GetRoom(roomId);
         if (room == null)
