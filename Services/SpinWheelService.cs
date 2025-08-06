@@ -24,7 +24,7 @@ public class SpinResult
     public List<string> History { get; set; }
 }
 
-public interface ISpinWheelState
+public interface ISpinWheel
 {
     List<string> History { get; }
     List<Segment> Segments { get; }
@@ -34,7 +34,7 @@ public interface ISpinWheelState
     void RemoveSegment(string name);
 }
 
-public class SpinWheel : ISpinWheelState
+public class SpinWheel : ISpinWheel
 {
     private static readonly Random random = new Random();
     private Queue<string> forcedResults = new Queue<string>();
