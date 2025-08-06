@@ -122,6 +122,17 @@ if (!roomId) {
     }
   });
 
+  connection.on("SegmentDeleted", (json) => {
+    try {
+      const data = JSON.parse(json);
+      state.wheel = renderWheel(data.Segments);
+      renderHistory(data.History);
+      console.log("Segment deleted and UI updated.");
+    } catch (e) {
+      console.error("Failed to parse SegmentDeleted message:", e);
+    }
+  });
+
   connection.on("CloseConnection", (reason) => {
     console.log("Connection closed by server:", reason);
     document.getElementById("layout").innerHTML += `<p style="color:red;">Connection Closed: ${reason}</p>`;
