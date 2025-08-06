@@ -71,7 +71,7 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            var result = await _manager.SpinWheelAndBroadcastAsync(roomId, future);
+            var result = await _manager.SpinWheelAsync(roomId, future);
             return Ok(new { roomId, result });
         }
         catch (KeyNotFoundException ex)
@@ -115,11 +115,7 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            var updatedRoom = await _manager.AddSegmentAndBroadcastAsync(
-                roomId,
-                request.Name,
-                request.Weight
-            );
+            var updatedRoom = await _manager.AddSegmentAsync(roomId, request.Name, request.Weight);
             return Ok(updatedRoom);
         }
         catch (KeyNotFoundException ex)
@@ -148,7 +144,7 @@ public class RoomsController : ControllerBase
 
             foreach (var segment in segments)
             {
-                await _manager.AddSegmentAndBroadcastAsync(roomId, segment.Name, segment.Weight);
+                await _manager.AddSegmentAsync(roomId, segment.Name, segment.Weight);
             }
 
             return CreatedAtAction(nameof(GetRoom), new { roomId }, segments);
@@ -166,7 +162,7 @@ public class RoomsController : ControllerBase
     [HttpDelete("{roomId}/segments/{name}")]
     public async Task<IActionResult> RemoveSegment(string roomId, string name)
     {
-        var result = await _manager.DeleteSegmentAndBroadcastAsync(roomId, name);
+        var result = await _manager.DeleteSegmentAsync(roomId, name);
         if (result == null)
         {
             return NotFound($"Room '{roomId}' not found or segment '{name}' does not exist.");

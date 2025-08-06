@@ -64,23 +64,16 @@ public class SpinWheel : ISpinWheelState
         if (Segments.Count == 0)
             throw new InvalidOperationException("No segments to spin.");
 
-        // Capture previous
         var previous = History.LastOrDefault();
-
-        // Determine current spin
         string current = forcedResults.Count > 0 ? forcedResults.Dequeue() : GetRandomSegment();
-
-        // Remove current from wheel
         Segments.RemoveAll(s => s.Name == current);
-        // Append to history
         History.Add(current);
 
-        // Prepare result payload
         return new SpinResult
         {
             Current = current,
             Previous = previous,
-            NewState = Segments.ToList(), // copy for immutability
+            NewState = Segments.ToList(), 
             History = History.ToList(),
         };
     }

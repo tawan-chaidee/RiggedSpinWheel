@@ -9,13 +9,9 @@ public interface ISpinWheelRoomManager
     bool RemoveRoom(string roomId);
     ISpinWheelState GetRoom(string roomId);
     IEnumerable<ISpinWheelState> GetAllRooms();
-    Task<SpinResult> SpinWheelAndBroadcastAsync(string roomId, List<string> future);
-    Task<ISpinWheelState> AddSegmentAndBroadcastAsync(
-        string roomId,
-        string segmentName,
-        int weight
-    );
-    Task<ISpinWheelState> DeleteSegmentAndBroadcastAsync(string roomId, string segmentName);
+    Task<SpinResult> SpinWheelAsync(string roomId, List<string> future);
+    Task<ISpinWheelState> AddSegmentAsync(string roomId, string segmentName, int weight);
+    Task<ISpinWheelState> DeleteSegmentAsync(string roomId, string segmentName);
 }
 
 public class SpinWheelRoomManager : ISpinWheelRoomManager
@@ -44,7 +40,7 @@ public class SpinWheelRoomManager : ISpinWheelRoomManager
 
     public IEnumerable<ISpinWheelState> GetAllRooms() => rooms.Values;
 
-    public async Task<SpinResult> SpinWheelAndBroadcastAsync(string roomId, List<string> future)
+    public async Task<SpinResult> SpinWheelAsync(string roomId, List<string> future)
     {
         var room = GetRoom(roomId) ?? throw new KeyNotFoundException($"Room '{roomId}' not found.");
         var spinResult = room.Spin(future);
@@ -54,7 +50,7 @@ public class SpinWheelRoomManager : ISpinWheelRoomManager
         return spinResult;
     }
 
-    public async Task<ISpinWheelState> AddSegmentAndBroadcastAsync(
+    public async Task<ISpinWheelState> AddSegmentAsync(
         string roomId,
         string segmentName,
         int weight
@@ -78,10 +74,7 @@ public class SpinWheelRoomManager : ISpinWheelRoomManager
         return room;
     }
 
-    public async Task<ISpinWheelState> DeleteSegmentAndBroadcastAsync(
-        string roomId,
-        string segmentName
-    )
+    public async Task<ISpinWheelState> DeleteSegmentAsync(string roomId, string segmentName)
     {
         var room = GetRoom(roomId);
         if (room == null)
