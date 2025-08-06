@@ -6,6 +6,9 @@ public class AddSegmentRequest
     public int Weight { get; set; }
 }
 
+/// <summary>
+/// Manages spin wheel rooms and related actions.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class RoomsController : ControllerBase
@@ -18,8 +21,7 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new room and return its ID
-    /// POST api/rooms
+    /// Create a new room and return its ID.
     /// </summary>
     [HttpPost]
     public IActionResult CreateRoom()
@@ -29,8 +31,7 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
-    /// Remove an existing room
-    /// DELETE api/rooms/{roomId}
+    /// Delete a room by ID.
     /// </summary>
     [HttpDelete("{roomId}")]
     public IActionResult DeleteRoom(string roomId)
@@ -41,8 +42,7 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
-    /// Get a single room’s state
-    /// GET api/rooms/{roomId}
+    /// Get the state of a room.
     /// </summary>
     [HttpGet("{roomId}")]
     public IActionResult GetRoom(string roomId)
@@ -52,8 +52,7 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
-    /// List all rooms’ state
-    /// GET api/rooms
+    /// List all active rooms.
     /// </summary>
     [HttpGet]
     public IActionResult GetAllRooms()
@@ -63,8 +62,7 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
-    /// Spin the wheel in a room and broadcast the result
-    /// POST api/rooms/{roomId}/spin
+    /// Spin the wheel and broadcast result.
     /// </summary>
     [HttpPost("{roomId}/spin")]
     public async Task<IActionResult> SpinWheel(string roomId, [FromBody] List<string> future)
@@ -81,8 +79,7 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
-    /// Get spin history of a room
-    /// GET api/rooms/{roomId}/history
+    /// Get spin history for a room.
     /// </summary>
     [HttpGet("{roomId}/history")]
     public IActionResult GetHistory(string roomId)
@@ -94,8 +91,7 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
-    /// Get current segments of a room
-    /// GET api/rooms/{roomId}/segments
+    /// Get current segments of a room.
     /// </summary>
     [HttpGet("{roomId}/segments")]
     public IActionResult GetSegments(string roomId)
@@ -107,8 +103,7 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
-    /// Add a new segment to a room’s wheel and broadcast the update
-    /// POST api/rooms/{roomId}/segments
+    /// Add a segment and broadcast update.
     /// </summary>
     [HttpPost("{roomId}/segments")]
     public async Task<IActionResult> AddSegment(string roomId, [FromBody] AddSegmentRequest request)
@@ -125,8 +120,7 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
-    /// Add multiple segments to a room's wheel and broadcast each update
-    /// POST api/rooms/{roomId}/segments/batch
+    /// Add multiple segments and broadcast updates.
     /// </summary>
     [HttpPost("{roomId}/segments/batch")]
     public async Task<IActionResult> AddSegments(
@@ -156,8 +150,7 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
-    /// Remove a segment from the wheel
-    /// DELETE api/rooms/{roomId}/segments/{name}
+    /// Remove a segment and broadcast update.
     /// </summary>
     [HttpDelete("{roomId}/segments/{name}")]
     public async Task<IActionResult> RemoveSegment(string roomId, string name)

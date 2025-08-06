@@ -21,6 +21,12 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddSwaggerGen(options =>
+{
+    var xmlFilename = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
+});
+
 var app = builder.Build();
 app.UseDefaultFiles();
 app.UseStaticFiles();
