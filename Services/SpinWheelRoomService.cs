@@ -85,7 +85,7 @@ public class SpinWheelRoomManager : ISpinWheelRoomManager
         room.RemoveSegment(segmentName);
 
         var json = JsonSerializer.Serialize(room);
-        await _hubContext.Clients.Group(roomId).SendAsync("SegmentAdded", json);
+        await _hubContext.Clients.Group(roomId).SendAsync("SegmentDeleted", json);
         Console.WriteLine($"Broadcasted segment Deletion in room {roomId}: {segmentName}");
 
         return room;
