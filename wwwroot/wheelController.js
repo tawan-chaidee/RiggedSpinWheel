@@ -66,8 +66,8 @@ function renderWheel(segments, onComplete) {
         segments: wheelSegments,
         animation: {
             type: "spinToStop",
-            duration: 8,
-            spins: 10,
+            duration: 4,
+            spins: 5,
             callbackFinished: onComplete,
         },
     });
