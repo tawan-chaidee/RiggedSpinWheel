@@ -17,6 +17,7 @@ To deploy using Heroku, simply install the Heroku CLI, log in, and then use the 
 
 ```bash
 git clone https://github.com/tawan-chaidee/RiggedSpinWheel.git
+cd RiggedSpinWheel
 heroku create spinwheel-production
 git push heroku main
 heroku open
