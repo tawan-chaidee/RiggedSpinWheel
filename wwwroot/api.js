@@ -6,34 +6,58 @@ export async function createRoom() {
   const response = await fetch(BASE_URL, { method: "POST" });
   if (!response.ok)
     throw new Error(`Failed to create room: ${response.statusText}`);
-  return response.json();
+
+  const data = await response.json();
+
+  const bearerToken = `Bearer ${data.token}`;
+
+  console.log('Bearer Token:', bearerToken);
+
+  localStorage.setItem('jwtToken', bearerToken);
+  console.log('Stored JWT from localStorage:', localStorage.getItem('jwtToken'));
+
+  return data; 
 }
 
+
 export async function getRoom(roomId) {
-  const response = await fetch(`${BASE_URL}/${roomId}`);
+  const token = localStorage.getItem('jwtToken');
+  const response = await fetch(`${BASE_URL}/${roomId}`, {
+    headers: {
+      "Authorization": token,
+    },
+  });
   if (!response.ok)
     throw new Error(`Failed to get room ${roomId}: ${response.statusText}`);
   return response.json();
 }
 
 export async function addSegments(roomId, segments) {
+  const token = localStorage.getItem('jwtToken');
   const url = `${BASE_URL}/${roomId}/segments/batch`;
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": token,
+    },
     body: JSON.stringify(segments),
   });
   return response.ok;
 }
 
 export async function spinWheel(roomId, winnerName = null) {
+  const token = localStorage.getItem('jwtToken');
   const url = `${BASE_URL}/${roomId}/spin`;
   const requestBody = winnerName
     ? JSON.stringify([winnerName])
     : JSON.stringify([]);
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": token,
+    },
     body: requestBody,
   });
   if (!response.ok) {
@@ -44,68 +68,75 @@ export async function spinWheel(roomId, winnerName = null) {
 }
 
 export async function deleteSegment(roomId, segmentName) {
+  const token = localStorage.getItem('jwtToken');
   const url = `${BASE_URL}/${roomId}/segments/${segmentName}`;
-  const response = await fetch(url, { method: "DELETE" });
+  const response = await fetch(url, { 
+    method: "DELETE",
+    headers: {
+      "Authorization": token,
+    },
+  });
   return response.ok;
 }
 
+
 // Poor man unit test
-async function runDemo() {
-  const segments = [
-    { name: "Alice", weight: 1 },
-    { name: "Bob", weight: 2 },
-    { name: "Charlie", weight: 3 },
-  ];
+// async function runDemo() {
+//   const segments = [
+//     { name: "Alice", weight: 1 },
+//     { name: "Bob", weight: 2 },
+//     { name: "Charlie", weight: 3 },
+//   ];
 
-  try {
-    // --- Test: Create Room ---
-    const { roomId } = await createRoom();
-    if (!roomId) throw new Error("❌ Failed to create room");
-    console.log("✅ Room created:", roomId);
+//   try {
+//     // --- Test: Create Room ---
+//     const { roomId } = await createRoom();
+//     if (!roomId) throw new Error("❌ Failed to create room");
+//     console.log("✅ Room created:", roomId);
 
-    // --- Test: Add Segments ---
-    const added = await addSegments(roomId, segments);
-    if (!added) throw new Error("❌ Failed to add segments");
-    console.log("✅ Segments added");
+//     // --- Test: Add Segments ---
+//     const added = await addSegments(roomId, segments);
+//     if (!added) throw new Error("❌ Failed to add segments");
+//     console.log("✅ Segments added");
 
-    // --- Test: Get Room Info ---
-    const room = await getRoom(roomId);
-    if (!room || !room.segments || room.segments.length !== segments.length)
-      throw new Error("❌ Room info incorrect after adding segments");
-    console.log("✅ Room info fetched correctly");
+//     // --- Test: Get Room Info ---
+//     const room = await getRoom(roomId);
+//     if (!room || !room.segments || room.segments.length !== segments.length)
+//       throw new Error("❌ Room info incorrect after adding segments");
+//     console.log("✅ Room info fetched correctly");
 
-    // --- Test: Random Spin ---
-    const randomSpin = await spinWheel(roomId);
+//     // --- Test: Random Spin ---
+//     const randomSpin = await spinWheel(roomId);
 
-    const randomWinner = randomSpin?.result?.newState?.[0]?.name;
-    if (!randomWinner) throw new Error("❌ Random spin failed");
-    console.log("✅ Random spin successful:", randomWinner);
+//     const randomWinner = randomSpin?.result?.newState?.[0]?.name;
+//     if (!randomWinner) throw new Error("❌ Random spin failed");
+//     console.log("✅ Random spin successful:", randomWinner);
 
-    // --- Test: Pick Winner Spin (deterministic) ---
-    const pickTarget = "Alice"; // Known existing name
-    const pickedSpin = await spinWheel(roomId, pickTarget);
-    const pickedWinner = pickedSpin?.result?.current;
-    if (pickedWinner !== pickTarget)
-      throw new Error(
-        `❌ Picked spin returned '${pickedWinner}' instead of '${pickTarget}'`
-      );
-    console.log("✅ Picked spin successful:", pickedWinner);
+//     // --- Test: Pick Winner Spin (deterministic) ---
+//     const pickTarget = "Alice"; // Known existing name
+//     const pickedSpin = await spinWheel(roomId, pickTarget);
+//     const pickedWinner = pickedSpin?.result?.current;
+//     if (pickedWinner !== pickTarget)
+//       throw new Error(
+//         `❌ Picked spin returned '${pickedWinner}' instead of '${pickTarget}'`
+//       );
+//     console.log("✅ Picked spin successful:", pickedWinner);
 
-    // --- Test: Delete Segment (deterministic) ---
-    const targetToDelete = "Charlie";
-    const deleted = await deleteSegment(roomId, targetToDelete);
-    if (!deleted) throw new Error("❌ Failed to delete segment");
-    const updatedRoom = await getRoom(roomId);
-    const stillExists = updatedRoom.segments.find(
-      (s) => s.name === targetToDelete
-    );
-    if (stillExists) throw new Error("❌ Segment still exists after deletion");
-    console.log("✅ Segment deleted successfully:", targetToDelete);
+//     // --- Test: Delete Segment (deterministic) ---
+//     const targetToDelete = "Charlie";
+//     const deleted = await deleteSegment(roomId, targetToDelete);
+//     if (!deleted) throw new Error("❌ Failed to delete segment");
+//     const updatedRoom = await getRoom(roomId);
+//     const stillExists = updatedRoom.segments.find(
+//       (s) => s.name === targetToDelete
+//     );
+//     if (stillExists) throw new Error("❌ Segment still exists after deletion");
+//     console.log("✅ Segment deleted successfully:", targetToDelete);
 
-    console.log("🎉 All tests passed!");
-  } catch (err) {
-    console.error("❌ Test failed:", err.message);
-  }
-}
+//     console.log("🎉 All tests passed!");
+//   } catch (err) {
+//     console.error("❌ Test failed:", err.message);
+//   }
+// }
 
-runDemo();
+// runDemo();

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 public class AddSegmentRequest
@@ -6,9 +7,6 @@ public class AddSegmentRequest
     public int Weight { get; set; }
 }
 
-/// <summary>
-/// Manages spin wheel rooms and related actions.
-/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class RoomsController : ControllerBase
@@ -21,19 +19,21 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new room and return its ID.
+    /// Create a new room and return its ID and authentication token.
     /// </summary>
     [HttpPost]
+    [AllowAnonymous]
     public IActionResult CreateRoom()
     {
-        var roomId = _manager.CreateRoom();
-        return CreatedAtAction(nameof(GetRoom), new { roomId }, new { roomId });
+        var (roomId, token) = _manager.CreateRoom();
+        return CreatedAtAction(nameof(GetRoom), new { roomId }, new { roomId, token });
     }
 
     /// <summary>
     /// Delete a room by ID.
     /// </summary>
     [HttpDelete("{roomId}")]
+    [Authorize]
     public IActionResult DeleteRoom(string roomId)
     {
         return _manager.RemoveRoom(roomId)
@@ -45,6 +45,7 @@ public class RoomsController : ControllerBase
     /// Get the state of a room.
     /// </summary>
     [HttpGet("{roomId}")]
+    [Authorize]
     public IActionResult GetRoom(string roomId)
     {
         var room = _manager.GetRoom(roomId);
@@ -55,6 +56,7 @@ public class RoomsController : ControllerBase
     /// List all active rooms.
     /// </summary>
     [HttpGet]
+    [AllowAnonymous]
     public IActionResult GetAllRooms()
     {
         var rooms = _manager.GetAllRooms();
@@ -65,6 +67,7 @@ public class RoomsController : ControllerBase
     /// Spin the wheel and broadcast result.
     /// </summary>
     [HttpPost("{roomId}/spin")]
+    [Authorize]
     public async Task<IActionResult> SpinWheel(string roomId, [FromBody] List<string> future)
     {
         try
@@ -82,6 +85,7 @@ public class RoomsController : ControllerBase
     /// Get spin history for a room.
     /// </summary>
     [HttpGet("{roomId}/history")]
+    [Authorize]
     public IActionResult GetHistory(string roomId)
     {
         var room = _manager.GetRoom(roomId);
@@ -94,6 +98,7 @@ public class RoomsController : ControllerBase
     /// Get current segments of a room.
     /// </summary>
     [HttpGet("{roomId}/segments")]
+    [Authorize]
     public IActionResult GetSegments(string roomId)
     {
         var room = _manager.GetRoom(roomId);
@@ -106,6 +111,7 @@ public class RoomsController : ControllerBase
     /// Add a segment and broadcast update.
     /// </summary>
     [HttpPost("{roomId}/segments")]
+    [Authorize]
     public async Task<IActionResult> AddSegment(string roomId, [FromBody] AddSegmentRequest request)
     {
         try
@@ -123,6 +129,7 @@ public class RoomsController : ControllerBase
     /// Add multiple segments and broadcast updates.
     /// </summary>
     [HttpPost("{roomId}/segments/batch")]
+    [Authorize]
     public async Task<IActionResult> AddSegments(
         string roomId,
         [FromBody] List<AddSegmentRequest> segments
@@ -153,6 +160,7 @@ public class RoomsController : ControllerBase
     /// Remove a segment and broadcast update.
     /// </summary>
     [HttpDelete("{roomId}/segments/{name}")]
+    [Authorize]
     public async Task<IActionResult> RemoveSegment(string roomId, string name)
     {
         var result = await _manager.DeleteSegmentAsync(roomId, name);
