@@ -2,7 +2,7 @@
 
 ## Project Description
 
-A web-based “Wheel of Death” game where the room owner can share a link for others to watch the spin.  Owner can secretly rig the result without the observers knowing. Built with real-time updates.
+A web-based "Wheel of Names" game where the room owner can share a link for others to watch the spin.  Owner can secretly rig the result without the observers knowing. Built with real-time updates.
 
 Inspired by a group presentation scenario where I wanted to avoid being selected as the presenter.
 
